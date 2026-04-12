@@ -141,7 +141,11 @@ const Dashboard = () => {
               <div className="file-upload">
                 <FaUpload />
                 <input type="file" name="images" multiple onChange={handleInputChange} accept="image/*" />
-                <span>Drag & Drop or Click to Upload</span>
+                {formData.images?.length ? (
+                  <span style={{ color: '#2563eb', fontWeight: 'bold' }}>{formData.images.length} file(s) selected</span>
+                ) : (
+                  <span>Drag & Drop or Click to Upload</span>
+                )}
               </div>
             </div>
           </motion.div>
@@ -158,7 +162,11 @@ const Dashboard = () => {
               <div className="file-upload">
                 <FaUpload />
                 <input type="file" name="images" onChange={handleInputChange} accept="image/*" />
-                <span>Upload an image for this memory</span>
+                {formData.images?.length ? (
+                  <span style={{ color: '#2563eb', fontWeight: 'bold' }}>{formData.images.length} file(s) selected</span>
+                ) : (
+                  <span>Upload an image for this memory</span>
+                )}
               </div>
             </div>
           </motion.div>
@@ -184,7 +192,11 @@ const Dashboard = () => {
               <div className="file-upload">
                 <FaUpload />
                 <input type="file" name="images" accept="image/*,application/pdf" multiple onChange={handleInputChange} required />
-                <span>Upload your creative piece</span>
+                {formData.images?.length ? (
+                  <span style={{ color: '#2563eb', fontWeight: 'bold' }}>{formData.images.length} file(s) selected</span>
+                ) : (
+                  <span>Upload your creative piece</span>
+                )}
               </div>
             </div>
           </motion.div>

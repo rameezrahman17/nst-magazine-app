@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { FaArrowLeft, FaSpinner, FaGithub, FaExternalLinkAlt, FaTimes } from 'react-icons/fa';
+import { FaArrowLeft, FaSpinner, FaGithub, FaExternalLinkAlt, FaTimes, FaShieldAlt } from 'react-icons/fa';
 import { supabase } from './supabaseClient';
 import './AdminPortal.css';
 
@@ -11,23 +11,49 @@ const AdminPortal = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [selectedImage, setSelectedImage] = useState(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [loginError, setLoginError] = useState(false);
 
   useEffect(() => {
-    fetchSubmissions();
+    // Check session storage for persistence in same session
+    const savedLogin = sessionStorage.getItem('adminAuth');
+    if (savedLogin === 'true') {
+      setIsLoggedIn(true);
+    }
   }, []);
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      fetchSubmissions();
+    } else {
+      setIsLoading(false);
+    }
+  }, [isLoggedIn]);
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+    const correctPassword = import.meta.env.VITE_ADMIN_PASSWORD || 'admin123';
+    if (passwordInput === correctPassword) {
+      setIsLoggedIn(true);
+      sessionStorage.setItem('adminAuth', 'true');
+      setLoginError(false);
+    } else {
+      setLoginError(true);
+    }
+  };
 
   const [fetchError, setFetchError] = useState(null);
 
   const fetchSubmissions = async () => {
     try {
-      // Intentionally avoiding created_at order to prevent crashes if column doesn't exist
+      setIsLoading(true);
       const { data, error } = await supabase
         .from('magazine_submissions')
         .select('*');
 
       if (error) throw error;
       
-      // Order client-side by id descending as fallback
       const sortedData = (data || []).sort((a, b) => (b.id || 0) - (a.id || 0));
       setSubmissions(sortedData);
     } catch (error) {
@@ -41,6 +67,40 @@ const AdminPortal = () => {
   const filteredSubmissions = filter === 'all' 
     ? submissions 
     : submissions.filter(sub => sub.category === filter);
+
+  if (!isLoggedIn) {
+    return (
+      <div className="admin-container login-screen">
+        <motion.div 
+          className="login-card"
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+        >
+          <div className="admin-logo">
+            <FaShieldAlt style={{ color: '#2563eb', fontSize: '3rem' }} />
+          </div>
+          <h2>Admin Access</h2>
+          <p>Please enter your identification secret to continue.</p>
+          <form onSubmit={handleLogin}>
+            <div className="form-group">
+              <input 
+                type="password" 
+                placeholder="Enter Secret Code"
+                value={passwordInput}
+                onChange={(e) => setPasswordInput(e.target.value)}
+                className={loginError ? 'error-pulse' : ''}
+              />
+              {loginError && <span className="error-text">Access Denied! Incorrect code.</span>}
+            </div>
+            <button type="submit" className="cta-btn">Authorize Access</button>
+            <button type="button" className="text-btn" onClick={() => navigate('/')} style={{ marginTop: '1rem', background: 'none', border: 'none', color: '#64748b', textDecoration: 'underline', width: '100%' }}>
+              Back to Public Site
+            </button>
+          </form>
+        </motion.div>
+      </div>
+    )
+  }
 
   if (isLoading) {
     return (
@@ -67,9 +127,14 @@ const AdminPortal = () => {
     <div className="admin-container">
       <header className="admin-header">
         <h1 className="admin-title">Portal Dashboard</h1>
-        <button className="admin-back-btn" onClick={() => navigate('/')}>
-          <FaArrowLeft /> Back to Home
-        </button>
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <button className="admin-back-btn" onClick={() => { sessionStorage.removeItem('adminAuth'); setIsLoggedIn(false); }}>
+            Logout
+          </button>
+          <button className="admin-back-btn" onClick={() => navigate('/')}>
+            <FaArrowLeft /> Home
+          </button>
+        </div>
       </header>
 
       <div className="filter-section">

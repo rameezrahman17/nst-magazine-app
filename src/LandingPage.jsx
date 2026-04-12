@@ -13,50 +13,19 @@ const LandingPage = () => {
   const [step, setStep] = useState('login'); // 'login' or 'otp'
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSendCode = async (e) => {
+  const handleEnter = (e) => {
     e.preventDefault();
     if (!campus) {
       alert("Please select a campus before proceeding.");
       return;
     }
-    
-    setIsLoading(true);
-    
-    // Trigger Supabase Passwordless OTP (Acts as frictionless 2FA)
-    const { error } = await supabase.auth.signInWithOtp({ 
-      email,
-      options: {
-        shouldCreateUser: true
-      }
-    });
-
-    setIsLoading(false);
-
-    if (error) {
-      alert("Error sending authentication code: " + error.message);
-    } else {
-      setStep('otp');
+    if (!email) {
+      alert("Please enter an email address.");
+      return;
     }
-  };
-
-  const handleVerifyOtp = async (e) => {
-    e.preventDefault();
-    if (!otp) return;
-
-    setIsLoading(true);
-    const { data, error } = await supabase.auth.verifyOtp({
-      email,
-      token: otp,
-      type: 'email'
-    });
-    setIsLoading(false);
-
-    if (error) {
-      alert("Invalid verification code: " + error.message);
-    } else {
-      // Pass campus and email to the dashboard via react-router state
-      navigate('/dashboard', { state: { campus, email } });
-    }
+    
+    // Pass campus and email directly to the dashboard without OTP
+    navigate('/dashboard', { state: { campus, email } });
   };
 
   return (
@@ -110,17 +79,16 @@ const LandingPage = () => {
           </p>
 
           <AnimatePresence mode="wait">
-            {step === 'login' ? (
               <motion.form 
                 key="login-form"
                 className="signup-card" 
-                onSubmit={handleSendCode}
+                onSubmit={handleEnter}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 20 }}
               >
                 <h3>Join the Network</h3>
-                <p>Select your campus and use secure passwordless login.</p>
+                <p>Select your campus and provide your details to enter.</p>
                 
                 <div className="form-group campus-group">
                   <label>Select Campus</label>
@@ -153,45 +121,10 @@ const LandingPage = () => {
                   />
                 </div>
 
-                <button type="submit" className="cta-btn" disabled={isLoading}>
-                  {isLoading ? <><FaSpinner className="icon-spin" style={{marginRight: '8px'}} /> Sending Code...</> : <>Send 2FA Secure Code <FaArrowRight /></>}
+                <button type="submit" className="cta-btn">
+                  Enter Dashboard <FaArrowRight />
                 </button>
               </motion.form>
-            ) : (
-              <motion.form 
-                key="otp-form"
-                className="signup-card" 
-                onSubmit={handleVerifyOtp}
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                  <FaShieldAlt style={{ color: '#2563eb', fontSize: '1.5rem' }} />
-                  <h3 style={{ margin: 0 }}>Two-Factor Auth</h3>
-                </div>
-                <p>We've sent a 6-digit secure code to <strong>{email}</strong>. Enter it below to access the dashboard.</p>
-                
-                <div className="form-group">
-                  <input 
-                    type="text" 
-                    placeholder="Enter 6-Digit Code" 
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value)}
-                    required
-                    style={{ fontSize: '1.5rem', letterSpacing: '8px', textAlign: 'center', fontWeight: 'bold' }}
-                    maxLength={6}
-                  />
-                </div>
-
-                <button type="submit" className="cta-btn" disabled={isLoading}>
-                  {isLoading ? <><FaSpinner className="icon-spin" style={{marginRight: '8px'}} /> Verifying...</> : <>Verify & Access Dashboard <FaArrowRight /></>}
-                </button>
-                <button type="button" className="text-btn" onClick={() => setStep('login')} style={{ marginTop: '1rem', width: '100%', background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', textDecoration: 'underline' }}>
-                  Use a different email
-                </button>
-              </motion.form>
-            )}
           </AnimatePresence>
 
         </motion.div>

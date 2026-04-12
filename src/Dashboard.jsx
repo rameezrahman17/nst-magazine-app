@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaTrophy, FaBookOpen, FaUserFriends, FaPalette, FaUpload, FaArrowLeft, FaSpinner } from 'react-icons/fa';
+import { FaTrophy, FaBookOpen, FaUserFriends, FaPalette, FaUpload, FaArrowLeft, FaSpinner, FaUsers, FaRocket } from 'react-icons/fa';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from './supabaseClient';
 import './Dashboard.css';
 
 const sections = [
   { id: 'achievement', title: 'Student Achievement', icon: <FaTrophy /> },
+  { id: 'team', title: 'Team Achievement', icon: <FaUsers /> },
+  { id: 'startup', title: 'Startup Pitch', icon: <FaRocket /> },
   { id: 'stories', title: 'Student Stories', icon: <FaBookOpen /> },
   { id: 'parents', title: 'Parents Review', icon: <FaUserFriends /> },
   { id: 'creative', title: 'Creative Input', icon: <FaPalette /> },
@@ -28,6 +30,16 @@ const Dashboard = () => {
     projectLink: '',
     githubLink: '',
     images: null,
+    // Team Specific
+    teamName: '',
+    teamSize: 0,
+    teamMembers: [],
+    // Startup Specific
+    startupName: '',
+    startupAchievement: '',
+    startupMembers: '',
+    startupDescription: '',
+    startupFuture: '',
   });
 
   const handleInputChange = (e) => {
@@ -65,6 +77,20 @@ const Dashboard = () => {
           imageUrls.push(publicUrlData.publicUrl);
         }
       }
+
+      // Consolidate specific category data into description if needed
+      let finalDescription = formData.description;
+      let finalName = formData.name;
+
+      if (activeTab === 'team') {
+        const teamInfo = `Team: ${formData.teamName}\nMembers (${formData.teamSize}): ${formData.teamMembers.map(m => `${m.name} (${m.email})`).join(', ')}\n\nHighlight: ${formData.description}`;
+        finalDescription = teamInfo;
+        finalName = `${formData.name} (Team ${formData.teamName})`;
+      } else if (activeTab === 'startup') {
+        const startupInfo = `Startup: ${formData.startupName}\nMembers: ${formData.startupMembers}\n\nAchievement: ${formData.startupAchievement}\n\nDescription: ${formData.startupDescription}\n\nFuture Scope: ${formData.startupFuture}`;
+        finalDescription = startupInfo;
+        finalName = `${formData.name} (${formData.startupName})`;
+      }
       
       // Insert into Supabase Table
       const { error: dbError } = await supabase
@@ -74,9 +100,9 @@ const Dashboard = () => {
             campus: campus,
             email: email,
             category: activeTab,
-            name: formData.name,
+            name: finalName,
             year: formData.year,
-            description: formData.description,
+            description: finalDescription,
             project_link: formData.projectLink,
             github_link: formData.githubLink,
             images: imageUrls,
@@ -88,7 +114,9 @@ const Dashboard = () => {
       alert(`Successfully submitted for ${sections.find(s => s.id === activeTab).title}!`);
       
       setFormData({
-        name: '', year: '', description: '', projectLink: '', githubLink: '', images: null
+        name: '', year: '', description: '', projectLink: '', githubLink: '', images: null,
+        teamName: '', teamSize: 0, teamMembers: [],
+        startupName: '', startupAchievement: '', startupMembers: '', startupDescription: '', startupFuture: ''
       });
       // reset file inputs visually
       document.querySelectorAll('input[type="file"]').forEach(input => input.value = '');
@@ -103,6 +131,7 @@ const Dashboard = () => {
   const renderFormFields = () => {
     return (
       <div className="form-content">
+        {/* Common Fields */}
         <div className="form-row">
           <div className="input-group">
             <label>Full Name</label>
@@ -138,6 +167,102 @@ const Dashboard = () => {
             </div>
             <div className="input-group file-group">
               <label>Memories (Upload Multiple Images)</label>
+              <div className="file-upload">
+                <FaUpload />
+                <input type="file" name="images" multiple onChange={handleInputChange} accept="image/*" />
+                {formData.images?.length ? (
+                  <span style={{ color: '#2563eb', fontWeight: 'bold' }}>{formData.images.length} file(s) selected</span>
+                ) : (
+                  <span>Drag & Drop or Click to Upload</span>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* NEW: Team Achievement Section */}
+        {activeTab === 'team' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="tab-fields">
+            <div className="form-row">
+              <div className="input-group">
+                <label>Team Name</label>
+                <input type="text" name="teamName" value={formData.teamName} onChange={handleInputChange} placeholder="Enter team name" required />
+              </div>
+              <div className="input-group">
+                <label>Number of Team Members</label>
+                <input type="number" name="teamSize" value={formData.teamSize || ''} onChange={handleInputChange} placeholder="0" min="1" max="10" required />
+              </div>
+            </div>
+
+            {formData.teamMembers.length > 0 && (
+              <div className="dynamic-members" style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', padding: '1.5rem', background: '#f8fafc', borderRadius: '1rem' }}>
+                <h4 style={{ margin: 0, fontSize: '1rem', color: '#0f172a' }}>Member Details</h4>
+                {formData.teamMembers.map((member, idx) => (
+                  <div key={idx} className="form-row" style={{ paddingBottom: '1rem', borderBottom: idx !== formData.teamMembers.length - 1 ? '1px solid #e2e8f0' : 'none' }}>
+                    <div className="input-group">
+                      <label>Member {idx + 1} Name</label>
+                      <input type="text" name={`teamMember-name-${idx}`} value={member.name} onChange={handleInputChange} placeholder="Name" required />
+                    </div>
+                    <div className="input-group">
+                      <label>Member {idx + 1} Email</label>
+                      <input type="email" name={`teamMember-email-${idx}`} value={member.email} onChange={handleInputChange} placeholder="Email" required />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="input-group" style={{ marginTop: '1.5rem' }}>
+              <label>Highlight of the Team Achievement</label>
+              <textarea name="description" value={formData.description} onChange={handleInputChange} rows="4" placeholder="Detail the event, competition, or hackathon..." required></textarea>
+            </div>
+            
+            <div className="input-group file-group">
+              <label>Memories (Upload Group Photos)</label>
+              <div className="file-upload">
+                <FaUpload />
+                <input type="file" name="images" multiple onChange={handleInputChange} accept="image/*" />
+                {formData.images?.length ? (
+                  <span style={{ color: '#2563eb', fontWeight: 'bold' }}>{formData.images.length} file(s) selected</span>
+                ) : (
+                  <span>Drag & Drop or Click to Upload</span>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {/* NEW: Startup Section */}
+        {activeTab === 'startup' && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="tab-fields">
+            <div className="form-row">
+              <div className="input-group">
+                <label>Startup Name</label>
+                <input type="text" name="startupName" value={formData.startupName} onChange={handleInputChange} placeholder="Company Name" required />
+              </div>
+              <div className="input-group">
+                <label>Number of Members</label>
+                <input type="text" name="startupMembers" value={formData.startupMembers} onChange={handleInputChange} placeholder="e.g., 4" required />
+              </div>
+            </div>
+
+            <div className="input-group">
+              <label>What is the startup about?</label>
+              <textarea name="startupDescription" value={formData.startupDescription} onChange={handleInputChange} rows="3" placeholder="Core concept..." required></textarea>
+            </div>
+
+            <div className="input-group">
+              <label>Main Achievement so far</label>
+              <textarea name="startupAchievement" value={formData.startupAchievement} onChange={handleInputChange} rows="3" placeholder="Major milestones, funding, or product launches..." required></textarea>
+            </div>
+
+            <div className="input-group">
+              <label>Future Scope</label>
+              <textarea name="startupFuture" value={formData.startupFuture} onChange={handleInputChange} rows="3" placeholder="Where do you see it in 2 years?" required></textarea>
+            </div>
+
+            <div className="input-group file-group">
+              <label>Startup Photos (Logo/Team/Product)</label>
               <div className="file-upload">
                 <FaUpload />
                 <input type="file" name="images" multiple onChange={handleInputChange} accept="image/*" />

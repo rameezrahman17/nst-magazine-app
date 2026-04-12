@@ -16,18 +16,23 @@ const AdminPortal = () => {
     fetchSubmissions();
   }, []);
 
+  const [fetchError, setFetchError] = useState(null);
+
   const fetchSubmissions = async () => {
     try {
+      // Intentionally avoiding created_at order to prevent crashes if column doesn't exist
       const { data, error } = await supabase
         .from('magazine_submissions')
-        .select('*')
-        .order('created_at', { ascending: false });
+        .select('*');
 
       if (error) throw error;
-      setSubmissions(data || []);
+      
+      // Order client-side by id descending as fallback
+      const sortedData = (data || []).sort((a, b) => (b.id || 0) - (a.id || 0));
+      setSubmissions(sortedData);
     } catch (error) {
       console.error('Error fetching submissions:', error);
-      alert('Error fetching data from database.');
+      setFetchError(error.message || 'Unknown database error');
     } finally {
       setIsLoading(false);
     }
@@ -42,6 +47,18 @@ const AdminPortal = () => {
       <div className="admin-container loading-container">
         <FaSpinner className="icon-spin" />
         <p>Loading Admin Dashboard...</p>
+      </div>
+    );
+  }
+
+  if (fetchError) {
+    return (
+      <div className="admin-container loading-container" style={{ color: '#ef4444' }}>
+        <p>Database Error:</p>
+        <code style={{ background: '#fee2e2', padding: '1rem', borderRadius: '0.5rem' }}>{fetchError}</code>
+        <p style={{ fontSize: '1rem', color: '#64748b', marginTop: '1rem' }}>
+          Please ensure your Supabase Row Level Security (RLS) policies allow "SELECT" operations for this table!
+        </p>
       </div>
     );
   }
@@ -65,9 +82,9 @@ const AdminPortal = () => {
 
       <div className="submissions-grid">
         <AnimatePresence>
-          {filteredSubmissions.map((sub) => (
+          {filteredSubmissions.map((sub, idx) => (
             <motion.div 
-              key={sub.id}
+              key={sub.id || idx}
               className="submission-card"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}

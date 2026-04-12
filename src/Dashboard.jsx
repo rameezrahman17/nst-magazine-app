@@ -212,6 +212,11 @@ const Dashboard = () => {
         <div className="sidebar-header">
           <h2>NST Magazine</h2>
           <p>Student Portal</p>
+          <div className="user-profile-badge" style={{ marginTop: '1.5rem', padding: '1rem', background: '#f8fafc', borderRadius: '0.75rem', border: '1px solid #e2e8f0' }}>
+            <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Active Profile</div>
+            <div style={{ fontSize: '0.95rem', fontWeight: 'bold', color: '#0f172a', wordBreak: 'break-all' }}>{email}</div>
+            <div className="campus-badge" style={{ marginTop: '0.5rem', display: 'inline-block' }}>{campus}</div>
+          </div>
         </div>
         <nav className="sidebar-nav">
           {sections.map((section) => (

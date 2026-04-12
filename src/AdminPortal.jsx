@@ -16,14 +16,6 @@ const AdminPortal = () => {
   const [loginError, setLoginError] = useState(false);
 
   useEffect(() => {
-    // Check session storage for persistence in same session
-    const savedLogin = sessionStorage.getItem('adminAuth');
-    if (savedLogin === 'true') {
-      setIsLoggedIn(true);
-    }
-  }, []);
-
-  useEffect(() => {
     if (isLoggedIn) {
       fetchSubmissions();
     } else {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaGraduationCap, FaArrowRight, FaUniversity, FaShieldAlt, FaSpinner, FaBook, FaLaptopCode, FaMicrochip } from 'react-icons/fa';
@@ -13,6 +13,16 @@ const LandingPage = () => {
   const [step, setStep] = useState('login'); // 'login' or 'otp'
   const [isLoading, setIsLoading] = useState(false);
 
+  useEffect(() => {
+    // Check if user already exists in history
+    const savedEmail = localStorage.getItem('userEmail');
+    const savedCampus = localStorage.getItem('userCampus');
+
+    if (savedEmail && savedCampus) {
+      navigate('/dashboard', { state: { campus: savedCampus, email: savedEmail } });
+    }
+  }, []);
+
   const handleEnter = (e) => {
     e.preventDefault();
     if (!campus) {
@@ -24,6 +34,10 @@ const LandingPage = () => {
       return;
     }
     
+    // Save to history/localStorage
+    localStorage.setItem('userEmail', email);
+    localStorage.setItem('userCampus', campus);
+
     // Pass campus and email directly to the dashboard without OTP
     navigate('/dashboard', { state: { campus, email } });
   };

@@ -225,9 +225,20 @@ const Dashboard = () => {
             </button>
           ))}
         </nav>
-        <div className="sidebar-footer">
+        <div className="sidebar-footer" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           <button className="back-btn" onClick={() => navigate('/')}>
             <FaArrowLeft /> Back to Home
+          </button>
+          <button 
+            className="back-btn" 
+            style={{ borderColor: '#ef4444', color: '#ef4444' }} 
+            onClick={() => {
+              localStorage.removeItem('userEmail');
+              localStorage.removeItem('userCampus');
+              navigate('/');
+            }}
+          >
+            Switch Profile
           </button>
         </div>
       </aside>

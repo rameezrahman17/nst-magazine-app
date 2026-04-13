@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaTrophy, FaBookOpen, FaUserFriends, FaPalette, FaUpload, FaArrowLeft, FaSpinner, FaUsers, FaRocket } from 'react-icons/fa';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { supabase } from './supabaseClient';
 import './Dashboard.css';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5001/api';
 
 const sections = [
   { id: 'achievement', title: 'Student Achievement', icon: <FaTrophy /> },
@@ -19,6 +20,7 @@ const Dashboard = () => {
   const location = useLocation();
   const campus = location.state?.campus || 'Unknown';
   const email = location.state?.email || 'Unknown';
+  const name = location.state?.name || email;
 
   const [activeTab, setActiveTab] = useState('achievement');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -55,29 +57,6 @@ const Dashboard = () => {
     setIsSubmitting(true);
     
     try {
-      let imageUrls = [];
-      
-      // Handle file uploads to Supabase Storage
-      if (formData.images && formData.images.length > 0) {
-        for (const file of formData.images) {
-          const fileExt = file.name.split('.').pop();
-          const fileName = `${Math.random()}-${Date.now()}.${fileExt}`;
-          const filePath = `${activeTab}/${fileName}`;
-          
-          let { error: uploadError } = await supabase.storage
-            .from('magazine_uploads')
-            .upload(filePath, file);
-            
-          if (uploadError) throw uploadError;
-          
-          const { data: publicUrlData } = supabase.storage
-            .from('magazine_uploads')
-            .getPublicUrl(filePath);
-            
-          imageUrls.push(publicUrlData.publicUrl);
-        }
-      }
-
       // Consolidate specific category data into description if needed
       let finalDescription = formData.description;
       let finalName = formData.name;
@@ -91,25 +70,31 @@ const Dashboard = () => {
         finalDescription = startupInfo;
         finalName = `${formData.name} (${formData.startupName})`;
       }
+
+      // Create FormData for Multi-part submission (Images + Data)
+      const submitData = new FormData();
+      submitData.append('campus', campus);
+      submitData.append('email', email);
+      submitData.append('category', activeTab);
+      submitData.append('name', finalName);
+      submitData.append('year', formData.year);
+      submitData.append('description', finalDescription);
+      submitData.append('project_link', formData.projectLink || '');
+      submitData.append('github_link', formData.githubLink || '');
       
-      // Insert into Supabase Table
-      const { error: dbError } = await supabase
-        .from('magazine_submissions')
-        .insert([
-          {
-            campus: campus,
-            email: email,
-            category: activeTab,
-            name: finalName,
-            year: formData.year,
-            description: finalDescription,
-            project_link: formData.projectLink,
-            github_link: formData.githubLink,
-            images: imageUrls,
-          }
-        ]);
-        
-      if (dbError) throw dbError;
+      if (formData.images) {
+        formData.images.forEach(file => {
+          submitData.append('images', file);
+        });
+      }
+
+      const res = await fetch(`${API_BASE_URL}/submissions`, {
+        method: 'POST',
+        body: submitData // No headers needed, browser sets boundary
+      });
+      
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
       
       alert(`Successfully submitted for ${sections.find(s => s.id === activeTab).title}!`);
       
@@ -338,8 +323,9 @@ const Dashboard = () => {
           <h2>NST Magazine</h2>
           <p>Student Portal</p>
           <div className="user-profile-badge" style={{ marginTop: '1.5rem', padding: '1rem', background: '#f8fafc', borderRadius: '0.75rem', border: '1px solid #e2e8f0' }}>
-            <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Active Profile</div>
-            <div style={{ fontSize: '0.95rem', fontWeight: 'bold', color: '#0f172a', wordBreak: 'break-all' }}>{email}</div>
+            <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 'bold', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Verified Name</div>
+            <div style={{ fontSize: '1.2rem', fontWeight: '800', color: '#0ea5e9', wordBreak: 'break-all', marginBottom: '0.25rem' }}>{name}</div>
+            <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '0.5rem' }}>{email}</div>
             <div className="campus-badge" style={{ marginTop: '0.5rem', display: 'inline-block' }}>{campus}</div>
           </div>
         </div>
@@ -362,13 +348,16 @@ const Dashboard = () => {
           <button 
             className="back-btn" 
             style={{ borderColor: '#ef4444', color: '#ef4444' }} 
-            onClick={() => {
-              localStorage.removeItem('userEmail');
+            onClick={async () => {
+              try {
+                await fetch(`${API_BASE_URL}/auth/logout`, { method: 'POST' });
+              } catch (e) {}
               localStorage.removeItem('userCampus');
+              localStorage.removeItem('userName');
               navigate('/');
             }}
           >
-            Switch Profile
+            Sign Out
           </button>
         </div>
       </aside>

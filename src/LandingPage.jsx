@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaGraduationCap, FaArrowRight, FaUniversity, FaTimes, FaSpinner, FaBook, FaLaptopCode, FaMicrochip, FaHandHoldingHeart, FaUserAstronaut } from 'react-icons/fa';
-import { supabase } from './supabaseClient';
+import { FaGraduationCap, FaArrowRight, FaUniversity, FaTimes, FaSpinner, FaBook, FaLaptopCode, FaMicrochip, FaHandHoldingHeart, FaUserAstronaut, FaCode, FaTerminal, FaDatabase, FaGoogle, FaHeart } from 'react-icons/fa';
 import './LandingPage.css';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5001/api';
 
 const LandingPage = () => {
   const navigate = useNavigate();
   const [campus, setCampus] = useState('');
+  const [userName, setUserName] = useState(''); // State for manual name entry
   const [email, setEmail] = useState('');
   const [showVolunteers, setShowVolunteers] = useState(false);
   const [showJoinModal, setShowJoinModal] = useState(false);
@@ -23,50 +25,134 @@ const LandingPage = () => {
     contribution: ''
   });
 
+  // Refs to avoid stale closures in Google callback
+  const campusRef = React.useRef(campus);
+  const nameRef = React.useRef(userName);
+
+  React.useEffect(() => {
+    campusRef.current = campus;
+  }, [campus]);
+
+  React.useEffect(() => {
+    nameRef.current = userName;
+  }, [userName]);
+
   useEffect(() => {
-    const savedEmail = localStorage.getItem('userEmail');
-    const savedCampus = localStorage.getItem('userCampus');
+    /* Initialize Google Identity Services */
+    const initGoogle = () => {
+      const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+      console.log("Initializing Google Auth with ID prefix:", clientId ? clientId.substring(0, 10) + "..." : "MISSING");
+      
+      if (window.google && clientId && clientId !== 'your-google-client-id.apps.googleusercontent.com') {
+        window.google.accounts.id.initialize({
+          client_id: clientId,
+          callback: handleGoogleResponse,
+          auto_select: false, // Don't auto-sign-in
+          cancel_on_tap_outside: true
+        });
+
+        // Render the visible "Continue with Google" button
+        window.google.accounts.id.renderButton(
+          document.getElementById("google-button-v2"),
+          { 
+            theme: "filled_blue", 
+            size: "large", 
+            width: "280", // Decreased width
+            shape: "rectangular", // Slightly rounded edges
+            text: "continue_with"
+          }
+        );
+      } else if (!clientId || clientId === 'your-google-client-id.apps.googleusercontent.com') {
+        console.warn("Google Client ID is missing or using placeholder in .env");
+      } else {
+        // Retry in 1s if script hasn't loaded yet
+        setTimeout(initGoogle, 1000);
+      }
+    };
+    
+    initGoogle();
     fetchVolunteers();
+  }, []);
 
-    if (savedEmail && savedCampus) {
-      navigate('/dashboard', { state: { campus: savedCampus, email: savedEmail } });
-    }
-  }, [navigate]);
+  const handleGoogleResponse = async (response) => {
+    const currentCampus = campusRef.current;
+    const currentName = nameRef.current;
 
-  const fetchVolunteers = async () => {
-    const { data, error } = await supabase.from('volunteers').select('*');
-    if (!error) setVolunteers(data || []);
-  };
+    console.log("Processing Google response for:", currentName, "@", currentCampus);
 
-  const handleEnter = (e) => {
-    e.preventDefault();
-    if (!campus || !email) {
-      alert("Please select a campus and enter email.");
+    if (!currentCampus || !currentName) {
+      alert("Please enter your name and select your campus first.");
       return;
     }
-    localStorage.setItem('userEmail', email);
-    localStorage.setItem('userCampus', campus);
-    
-    setShowIntro(true);
-    setTimeout(() => {
-      setShowIntro(false);
-      navigate('/dashboard', { state: { campus, email } });
-    }, 1500);
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/google`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential: response.credential })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        console.log("Backend Auth Successful:", data.user);
+        localStorage.setItem('userCampus', currentCampus);
+        localStorage.setItem('userName', currentName);
+        
+        setShowIntro(true);
+        setTimeout(() => {
+          setShowIntro(false);
+          navigate('/dashboard', { state: { campus: currentCampus, email: data.user.email, name: currentName } });
+        }, 1500);
+      } else {
+        console.error("Backend Auth Failed:", data);
+        alert(`Authentication failed: ${data.message || 'Unknown error'}`);
+      }
+    } catch (err) {
+      console.error("Fetch Error:", err);
+      alert("Backend connection error. Is your Node.js server running on port 5001?");
+    }
   };
+
+  const fetchVolunteers = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/volunteers`);
+      const data = await res.json();
+      setVolunteers(data || []);
+    } catch (err) {
+      console.error("Error fetching volunteers:", err);
+      setVolunteers([]); // Fallback to empty array
+    }
+  };
+
+  const triggerGoogleLogin = () => {
+    if (!campus || !userName) {
+      alert("Please enter your name and select your campus first.");
+      return;
+    }
+    window.google.accounts.id.prompt(); 
+  };
+
+
 
   const handleVolunteerSubmit = async (e) => {
     e.preventDefault();
     setIsSubmittingVolunteer(true);
     try {
-      const { error } = await supabase.from('volunteers').insert([volunteerForm]);
-      if (error) throw error;
-      alert("Thank you for volunteering! Your entry has been recorded.");
+      const res = await fetch(`${API_BASE_URL}/volunteers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(volunteerForm)
+      });
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+      
+      alert("Thank you for volunteering!");
       setShowJoinModal(false);
       setVolunteerForm({ name: '', email: '', campus: '', year: '', contribution: '' });
       fetchVolunteers();
     } catch (err) {
       console.error(err);
-      alert("Error: " + err.message + ". (Make sure the 'volunteers' table exists in Supabase)");
+      alert("Error: " + err.message);
     } finally {
       setIsSubmittingVolunteer(false);
     }
@@ -101,13 +187,28 @@ const LandingPage = () => {
         <div className="tech-grid"></div>
         <div className="shape shape-1"></div>
         <div className="shape shape-2"></div>
-        <motion.div className="floating-element" style={{ top: '20%', left: '10%' }} animate={{ y: [0, -20, 0], rotate: [0, 10, 0] }} transition={{ repeat: Infinity, duration: 6 }}>
+        <motion.div className="floating-element" style={{ top: '15%', left: '8%' }} animate={{ y: [0, -30, 0], rotate: [0, 15, 0] }} transition={{ repeat: Infinity, duration: 8, ease: "easeInOut" }}>
+          <FaCode />
+        </motion.div>
+        <motion.div className="floating-element" style={{ bottom: '15%', right: '12%' }} animate={{ y: [0, 40, 0], rotate: [0, -20, 0] }} transition={{ repeat: Infinity, duration: 10, ease: "easeInOut" }}>
           <FaLaptopCode />
         </motion.div>
-        <motion.div className="floating-element" style={{ bottom: '20%', right: '15%' }} animate={{ y: [0, 30, 0], rotate: [0, -15, 0] }} transition={{ repeat: Infinity, duration: 8 }}>
-          <FaLaptopCode />
+        <motion.div className="floating-element" style={{ top: '35%', right: '8%' }} animate={{ y: [0, -25, 0], rotate: [0, 25, 0] }} transition={{ repeat: Infinity, duration: 9, ease: "easeInOut" }}>
+          <FaMicrochip />
         </motion.div>
-        <motion.div className="floating-element" style={{ top: '40%', right: '10%' }} animate={{ y: [0, -15, 0], rotate: [0, 20, 0] }} transition={{ repeat: Infinity, duration: 7 }}>
+        <motion.div className="floating-element" style={{ top: '55%', left: '5%' }} animate={{ y: [0, 20, 0], rotate: [0, -10, 0] }} transition={{ repeat: Infinity, duration: 7, ease: "easeInOut" }}>
+          <FaTerminal />
+        </motion.div>
+        <motion.div className="floating-element" style={{ top: '75%', right: '18%' }} animate={{ y: [0, -35, 0], rotate: [0, 30, 0] }} transition={{ repeat: Infinity, duration: 11, ease: "easeInOut" }}>
+          <FaDatabase />
+        </motion.div>
+        <motion.div className="floating-element" style={{ top: '10%', right: '25%' }} animate={{ y: [0, 15, 0], rotate: [0, -15, 0] }} transition={{ repeat: Infinity, duration: 12, ease: "easeInOut" }}>
+          <FaCode />
+        </motion.div>
+        <motion.div className="floating-element" style={{ bottom: '10%', left: '20%' }} animate={{ y: [0, -45, 0], rotate: [0, 10, 0] }} transition={{ repeat: Infinity, duration: 13, ease: "easeInOut" }}>
+          <FaTerminal />
+        </motion.div>
+        <motion.div className="floating-element" style={{ top: '45%', left: '15%' }} animate={{ y: [0, 50, 0], rotate: [0, 20, 0] }} transition={{ repeat: Infinity, duration: 15, ease: "easeInOut" }}>
           <FaMicrochip />
         </motion.div>
       </div>
@@ -119,7 +220,7 @@ const LandingPage = () => {
         </div>
         <div className="nav-links">
           <a href="#">About</a>
-          <a href="#" onClick={(e) => { e.preventDefault(); setShowVolunteers(true); }}>Volunteers</a>
+          <a href="#" onClick={(e) => { e.preventDefault(); fetchVolunteers(); setShowVolunteers(true); }}>Volunteers</a>
           <a href="#" onClick={(e) => { e.preventDefault(); navigate('/admin'); }}>Admin</a>
         </div>
       </nav>
@@ -144,16 +245,27 @@ const LandingPage = () => {
 
           <div style={{ display: 'flex', gap: '1.5rem', justifyContent: 'center' }}>
             <AnimatePresence mode="wait">
-                <motion.form 
+                <motion.div 
                   key="login-form"
                   className="signup-card" 
-                  onSubmit={handleEnter}
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                 >
-                  <h3 style={{ marginTop: 0 }}>Join the Network</h3>
-                  <p>Select your campus and provide details to enter.</p>
+                  <h3 style={{ marginTop: 0 }}>Verified Student Entry</h3>
+                  <p>Enter your details and verify with Google.</p>
                   
+                  <div className="form-group">
+                    <label>Full Name</label>
+                    <input 
+                      type="text" 
+                      placeholder="Enter your name" 
+                      value={userName}
+                      onChange={(e) => setUserName(e.target.value)}
+                      required
+                      className="signup-input"
+                    />
+                  </div>
+
                   <div className="form-group">
                     <label>Select Campus</label>
                     <div className="campus-options">
@@ -168,58 +280,61 @@ const LandingPage = () => {
                     </div>
                   </div>
 
-                  <div className="form-group">
-                    <input 
-                      type="email" 
-                      placeholder="Student Email Address" 
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                    />
+                  {/* New V2 Google Button Placeholder */}
+                  <div className="google-v2-container">
+                    <div id="google-button-v2"></div>
                   </div>
 
-                  <button type="submit" className="cta-btn">
-                    Enter Dashboard <FaArrowRight />
-                  </button>
-
-                  <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                  <div style={{ marginTop: '2rem', paddingTop: '2rem', borderTop: '1px solid rgba(255,255,255,0.1)' }}>
                     <button type="button" className="secondary-btn" style={{ width: '100%' }} onClick={() => setShowJoinModal(true)}>
                       <FaHandHoldingHeart style={{ marginRight: '8px' }} /> Become a Volunteer
                     </button>
                   </div>
-                </motion.form>
-            </AnimatePresence>
-          </div>
-        </motion.div>
-      </main>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </motion.div>
+        </main>
 
       {/* Volunteers List Modal */}
       {showVolunteers && (
         <div className="modal-overlay" onClick={() => setShowVolunteers(false)}>
           <motion.div className="modal-content" onClick={e => e.stopPropagation()} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}>
             <button className="close-btn" onClick={() => setShowVolunteers(false)}><FaTimes /></button>
-            <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <FaUserAstronaut style={{ color: 'var(--nst-blue-light)' }} /> Our Volunteers
-            </h2>
-            <p style={{ color: 'var(--text-muted)' }}>The brilliant minds helping us create this magazine.</p>
-            <div className="volunteer-list">
-              {volunteers.length > 0 ? volunteers.map((v, i) => (
-                <div key={i} className="volunteer-card">
-                  <div style={{ width: '40px', height: '40px', background: 'var(--nst-blue-light)', borderRadius: '50%', margin: '0 auto 0.75rem', display: 'flex', alignItems: 'center', justifyCenter: 'center', fontWeight: 'bold' }}>
-                    {v.name[0]}
-                  </div>
-                  <h4>{v.name}</h4>
-                  <p>{v.campus} • {v.year} Yr</p>
+            
+            {volunteers.length === 0 ? (
+              <div className="empty-state-content">
+                <FaHeart className="empty-state-icon" />
+                <h2>Our Community of Change-Makers</h2>
+                <p>Be the first to join our network of innovators and contributors. Your impact starts here.</p>
+                <button className="join-btn" onClick={() => { setShowVolunteers(false); setShowJoinModal(true); }}>
+                  Join them now
+                </button>
+              </div>
+            ) : (
+              <>
+                <h2><FaUserAstronaut style={{ color: 'var(--electric-blue)' }} /> Our Volunteers</h2>
+                <p>The brilliant minds helping us create this magazine.</p>
+                <div className="volunteer-list">
+                  {Array.isArray(volunteers) && volunteers.length > 0 ? volunteers.map((v, i) => (
+                    <div key={i} className="volunteer-card">
+                      <div className="volunteer-avatar">
+                        {v.name ? v.name[0] : '?'}
+                      </div>
+                      <h4>{v.name || 'Anonymous'}</h4>
+                      <p>{v.campus || 'N/A'} • {v.year || '?' } Yr</p>
+                    </div>
+                  )) : (
+                    <div style={{ gridColumn: '1/-1', textAlign: 'center', color: '#8892b0' }}>
+                      No volunteers found.
+                    </div>
+                  )}
                 </div>
-              )) : (
-                <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
-                  No volunteers yet. Be the first!
-                </div>
-              )}
-            </div>
-            <button className="cta-btn" style={{ marginTop: '2rem' }} onClick={() => { setShowVolunteers(false); setShowJoinModal(true); }}>
-              Join them now
-            </button>
+                <button className="join-btn" style={{ marginTop: '2.5rem' }} onClick={() => { setShowVolunteers(false); setShowJoinModal(true); }}>
+                  Become a Volunteer
+                </button>
+              </>
+            )}
           </motion.div>
         </div>
       )}

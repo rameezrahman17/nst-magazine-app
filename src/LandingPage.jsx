@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FaGraduationCap, FaArrowRight, FaUniversity, FaTimes, FaSpinner, FaBook, FaLaptopCode, FaMicrochip, FaHandHoldingHeart, FaUserAstronaut, FaCode, FaTerminal, FaDatabase, FaGoogle, FaHeart } from 'react-icons/fa';
 import './LandingPage.css';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+const API_BASE_URL = 'https://nst-magazine-backend.rameezrahman17.workers.dev/api';
 
 const LandingPage = () => {
   const navigate = useNavigate();

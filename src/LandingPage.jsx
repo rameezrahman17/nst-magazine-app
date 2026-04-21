@@ -38,6 +38,16 @@ const LandingPage = () => {
   }, [userName]);
 
   useEffect(() => {
+    // Auto-redirect if already logged in!
+    const storedEmail = localStorage.getItem('userEmail');
+    const storedCampus = localStorage.getItem('userCampus');
+    const storedName = localStorage.getItem('userName');
+    
+    if (storedEmail && storedEmail !== 'Unknown' && storedCampus && storedCampus !== 'Unknown') {
+      navigate('/dashboard', { state: { campus: storedCampus, email: storedEmail, name: storedName } });
+      return;
+    }
+
     /* Initialize Google Identity Services */
     const initGoogle = () => {
       const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;

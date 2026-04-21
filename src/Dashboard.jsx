@@ -18,9 +18,16 @@ const sections = [
 const Dashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const campus = location.state?.campus || 'Unknown';
-  const email = location.state?.email || 'Unknown';
-  const name = location.state?.name || email;
+  
+  const campus = location.state?.campus || localStorage.getItem('userCampus');
+  const email = location.state?.email || localStorage.getItem('userEmail');
+  const name = location.state?.name || localStorage.getItem('userName') || email;
+
+  React.useEffect(() => {
+    if (!campus || !email || campus === 'Unknown' || email === 'Unknown') {
+      navigate('/');
+    }
+  }, [campus, email, navigate]);
 
   const [activeTab, setActiveTab] = useState('achievement');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -354,6 +361,7 @@ const Dashboard = () => {
               } catch (e) {}
               localStorage.removeItem('userCampus');
               localStorage.removeItem('userName');
+              localStorage.removeItem('userEmail');
               navigate('/');
             }}
           >

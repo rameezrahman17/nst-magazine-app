@@ -97,12 +97,9 @@ const LandingPage = () => {
         console.log("Backend Auth Successful:", data.user);
         localStorage.setItem('userCampus', currentCampus);
         localStorage.setItem('userName', currentName);
+        localStorage.setItem('userEmail', data.user.email);
         
-        setShowIntro(true);
-        setTimeout(() => {
-          setShowIntro(false);
-          navigate('/dashboard', { state: { campus: currentCampus, email: data.user.email, name: currentName } });
-        }, 1500);
+        navigate('/dashboard', { state: { campus: currentCampus, email: data.user.email, name: currentName } });
       } else {
         console.error("Backend Auth Failed:", data);
         alert(`Authentication failed: ${data.message || 'Unknown error'}`);

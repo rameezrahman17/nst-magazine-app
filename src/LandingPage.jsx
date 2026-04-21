@@ -109,7 +109,8 @@ const LandingPage = () => {
       }
     } catch (err) {
       console.error("Fetch Error:", err);
-      alert("Backend connection error. Is your Node.js server running on port 5001?");
+      alert(`Login failed: ${err.message}. Please try again or contact support.`);
+
     }
   };
 

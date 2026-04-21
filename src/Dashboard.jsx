@@ -4,7 +4,7 @@ import { FaTrophy, FaBookOpen, FaUserFriends, FaPalette, FaUpload, FaArrowLeft, 
 import { useNavigate, useLocation } from 'react-router-dom';
 import './Dashboard.css';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5001/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 const sections = [
   { id: 'achievement', title: 'Student Achievement', icon: <FaTrophy /> },

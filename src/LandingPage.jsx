@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FaGraduationCap, FaArrowRight, FaUniversity, FaTimes, FaSpinner, FaBook, FaLaptopCode, FaMicrochip, FaHandHoldingHeart, FaUserAstronaut, FaCode, FaTerminal, FaDatabase, FaGoogle, FaHeart } from 'react-icons/fa';
 import './LandingPage.css';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5001/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 const LandingPage = () => {
   const navigate = useNavigate();

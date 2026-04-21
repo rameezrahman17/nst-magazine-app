@@ -7,9 +7,8 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'https://nst-magazine-app.vercel.app',
+        target: 'http://localhost:5001',
         changeOrigin: true,
-        secure: false,
       },
     },
   },

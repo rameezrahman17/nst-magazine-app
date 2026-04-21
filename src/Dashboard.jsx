@@ -151,10 +151,10 @@ const Dashboard = () => {
               </div>
             </div>
             <div className="input-group file-group">
-              <label>Memories (Upload Multiple Images)</label>
+              <label>Memories (Upload Images/PDFs)</label>
               <div className="file-upload">
                 <FaUpload />
-                <input type="file" name="images" multiple onChange={handleInputChange} accept="image/*" />
+                <input type="file" name="images" multiple onChange={handleInputChange} accept="image/*,application/pdf" />
                 {formData.images?.length ? (
                   <span style={{ color: '#2563eb', fontWeight: 'bold' }}>{formData.images.length} file(s) selected</span>
                 ) : (
@@ -203,10 +203,10 @@ const Dashboard = () => {
             </div>
             
             <div className="input-group file-group">
-              <label>Memories (Upload Group Photos)</label>
+              <label>Memories (Upload Group Photos/PDFs)</label>
               <div className="file-upload">
                 <FaUpload />
-                <input type="file" name="images" multiple onChange={handleInputChange} accept="image/*" />
+                <input type="file" name="images" multiple onChange={handleInputChange} accept="image/*,application/pdf" />
                 {formData.images?.length ? (
                   <span style={{ color: '#2563eb', fontWeight: 'bold' }}>{formData.images.length} file(s) selected</span>
                 ) : (
@@ -247,10 +247,10 @@ const Dashboard = () => {
             </div>
 
             <div className="input-group file-group">
-              <label>Startup Photos (Logo/Team/Product)</label>
+              <label>Startup Files (Logo/Team/Product/PDFs)</label>
               <div className="file-upload">
                 <FaUpload />
-                <input type="file" name="images" multiple onChange={handleInputChange} accept="image/*" />
+                <input type="file" name="images" multiple onChange={handleInputChange} accept="image/*,application/pdf" />
                 {formData.images?.length ? (
                   <span style={{ color: '#2563eb', fontWeight: 'bold' }}>{formData.images.length} file(s) selected</span>
                 ) : (
@@ -268,14 +268,14 @@ const Dashboard = () => {
               <textarea name="description" value={formData.description} onChange={handleInputChange} rows="6" placeholder="Write your campus stories here..." required></textarea>
             </div>
             <div className="input-group file-group">
-              <label>Memory Image</label>
+              <label>Memory File (Image/PDF)</label>
               <div className="file-upload">
                 <FaUpload />
-                <input type="file" name="images" onChange={handleInputChange} accept="image/*" />
+                <input type="file" name="images" onChange={handleInputChange} accept="image/*,application/pdf" />
                 {formData.images?.length ? (
                   <span style={{ color: '#2563eb', fontWeight: 'bold' }}>{formData.images.length} file(s) selected</span>
                 ) : (
-                  <span>Upload an image for this memory</span>
+                  <span>Upload a file for this memory</span>
                 )}
               </div>
             </div>

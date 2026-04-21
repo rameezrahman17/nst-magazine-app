@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { FaArrowLeft, FaSpinner, FaGithub, FaExternalLinkAlt, FaTimes, FaShieldAlt, FaHandHoldingHeart } from 'react-icons/fa';
+import { FaArrowLeft, FaSpinner, FaGithub, FaExternalLinkAlt, FaTimes, FaShieldAlt, FaHandHoldingHeart, FaDownload, FaTrash } from 'react-icons/fa';
 import { supabase } from './supabaseClient';
 import './AdminPortal.css';
 
@@ -73,6 +73,47 @@ const AdminPortal = () => {
     ? submissions 
     : filter === 'volunteers' ? [] : submissions.filter(sub => sub.category === filter);
 
+  const deleteSubmission = async (id, type = 'submission') => {
+    if (!window.confirm("Are you sure you want to delete this record?")) return;
+    try {
+      if (type === 'volunteer') {
+        const { error } = await supabase.from('volunteers').delete().eq('id', id);
+        if (error) throw error;
+        setVolunteers(prev => prev.filter(v => v.id !== id));
+      } else {
+        const { error } = await supabase.from('magazine_submissions').delete().eq('id', id);
+        if (error) throw error;
+        setSubmissions(prev => prev.filter(s => s.id !== id));
+      }
+    } catch (e) {
+      alert("Error deleting: " + e.message);
+    }
+  };
+
+  const exportCSV = () => {
+    let csvContent = "";
+    if (filter === 'volunteers') {
+      csvContent += "Name,Email,Campus,Year,Contribution\n";
+      volunteers.forEach(v => {
+        csvContent += `"${v.name}","${v.email}","${v.campus}","${v.year}","${v.contribution}"\n`;
+      });
+    } else {
+      csvContent += "Category,Name,Email,Campus,Year,Description,Project Link,Github Link,Files\n";
+      filteredSubmissions.forEach(s => {
+        const files = s.images ? s.images.join(' | ') : '';
+        const desc = s.description ? s.description.replace(/"/g, '""') : '';
+        csvContent += `"${s.category}","${s.name}","${s.email}","${s.campus}","${s.year}","${desc}","${s.project_link || ''}","${s.github_link || ''}","${files}"\n`;
+      });
+    }
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.setAttribute("download", `${filter}_data.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (!isLoggedIn) {
     return (
       <div className="admin-container login-screen">
@@ -139,6 +180,9 @@ const AdminPortal = () => {
         <button className={`filter-btn ${filter === 'stories' ? 'active' : ''}`} onClick={() => setFilter('stories')}>Stories</button>
         <button className={`filter-btn ${filter === 'parents' ? 'active' : ''}`} onClick={() => setFilter('parents')}>Parents</button>
         <button className={`filter-btn ${filter === 'creative' ? 'active' : ''}`} onClick={() => setFilter('creative')}>Creative</button>
+        <button className="filter-btn" style={{ marginLeft: 'auto', background: '#10b981', color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={exportCSV}>
+          <FaDownload /> Export CSV
+        </button>
       </div>
 
       <div className="submissions-grid">
@@ -154,6 +198,7 @@ const AdminPortal = () => {
                        <th style={{ padding: '1rem' }}>Campus</th>
                        <th style={{ padding: '1rem' }}>Year</th>
                        <th style={{ padding: '1rem' }}>Contribution</th>
+                       <th style={{ padding: '1rem' }}>Actions</th>
                      </tr>
                    </thead>
                    <tbody>
@@ -164,6 +209,9 @@ const AdminPortal = () => {
                          <td style={{ padding: '1rem' }}><span className="campus-badge">{v.campus}</span></td>
                          <td style={{ padding: '1rem' }}>Year {v.year}</td>
                          <td style={{ padding: '1rem', fontStyle: 'italic', color: '#94a3b8' }}>{v.contribution}</td>
+                         <td style={{ padding: '1rem' }}>
+                           <button onClick={() => deleteSubmission(v.id, 'volunteer')} style={{ background: '#ef4444', color: 'white', border: 'none', padding: '0.4rem 0.6rem', borderRadius: '0.4rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><FaTrash /> Delete</button>
+                         </td>
                        </tr>
                      ))}
                    </tbody>
@@ -188,11 +236,15 @@ const AdminPortal = () => {
                       <span className="campus-badge">{sub.campus}</span>
                       <span>Year {sub.year}</span>
                     </div>
-                    <span className="user-meta" style={{marginTop: '4px', fontSize: '0.8rem'}}>{sub.email}</span>
                   </div>
-                  <span style={{ fontSize: '0.8rem', color: '#94a3b8', textTransform: 'capitalize' }}>
-                    {sub.category}
-                  </span>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+                    <span style={{ fontSize: '0.8rem', color: '#94a3b8', textTransform: 'capitalize' }}>
+                      {sub.category}
+                    </span>
+                    <button onClick={() => deleteSubmission(sub.id, 'submission')} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#ef4444', color: 'white', border: 'none', padding: '0.3rem 0.6rem', borderRadius: '0.4rem', cursor: 'pointer', fontSize: '0.8rem' }}>
+                      <FaTrash /> Delete
+                    </button>
+                  </div>
                 </div>
 
                 <div className="card-body">
@@ -213,15 +265,26 @@ const AdminPortal = () => {
 
                   {sub.images && sub.images.length > 0 && (
                     <div className="images-grid">
-                      {sub.images.map((img, idx) => (
-                        <img 
-                          key={idx} 
-                          src={img} 
-                          alt="submission" 
-                          className="submission-img" 
-                          onClick={() => setSelectedImage(img)}
-                        />
-                      ))}
+                      {sub.images.map((img, idx) => {
+                        const isPdf = img.toLowerCase().includes('.pdf');
+                        return isPdf ? (
+                          <a key={idx} href={img} target="_blank" rel="noreferrer" className="link-btn" style={{ background: '#ef4444', color: 'white', display: 'flex', justifyContent: 'center' }}>
+                            <FaExternalLinkAlt /> View & Download PDF
+                          </a>
+                        ) : (
+                          <div key={idx} style={{ position: 'relative' }}>
+                            <img 
+                              src={img} 
+                              alt="submission" 
+                              className="submission-img" 
+                              onClick={() => setSelectedImage(img)}
+                            />
+                            <a href={img} download target="_blank" rel="noreferrer" style={{ position: 'absolute', bottom: '5px', right: '5px', background: 'rgba(0,0,0,0.7)', color: 'white', padding: '4px 8px', borderRadius: '4px', textDecoration: 'none', fontSize: '0.8rem' }}>
+                              Download API
+                            </a>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
